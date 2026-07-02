@@ -1,99 +1,112 @@
 import streamlit as st
-import yfinance as yf
 import pandas as pd
+import requests
 
-st.set_page_config(page_title="AI Alpha Multibagger Scanner", layout="wide")
-st.title("🔥 AI Next-Gen Multibagger Stock Scanner")
-st.write("Live Financial Ratios + Market Cap + Live News Sentiment Analysis")
+st.set_page_config(page_title="AI Institutional Radar", layout="wide")
+st.title("🛡️ AI Automatic Multibagger Radar (Zero-Input Mode)")
+st.write("Automatically scanning Small & Mid-caps with Volume Breakouts & News Velocity")
 
-# Default High-Growth/Turnaround Watchlist
-default_stocks = "KAYNES.NS, DATAPATTERNS.NS, INOXWIND.NS, HBLPOWER.NS, TATAPOWER.NS, SUZLON.NS, IREDA.NS"
-user_input = st.text_input("Stocks ke Tickers dalein (comma separated):", default_stocks)
+# 1. Background Automation: Pre-defined High-Growth Mid/Small-Cap Universe
+# (Bhai, background mein yeh poore pool ko automatic scan karega bina aapke type kiye)
+auto_universe = [
+    "SUZLON.NS", "KPIGREEN.NS", "IREDA.NS", "KAYNES.NS", "DATAPATTERNS.NS", 
+    "HBLPOWER.NS", "INOXWIND.NS", "NETWEB.NS", "HITACHI.NS", "RVNL.NS", 
+    "IRFC.NS", "NATCOPHARM.NS", "DEEPAKNIT.NS", "BDL.NS", "MAZDOCK.NS"
+]
 
-if st.button("Run Advanced Scan 🚀"):
-    tickers = [t.strip() for t in user_input.split(",")]
+if st.button("Start Automatic Market Scan ⚡"):
     multibagger_picks = []
     
-    with st.spinner("Fetching financials and live market news..."):
-        for ticker in tickers:
+    with st.spinner("AI is scanning the market data, volumes, and news channels..."):
+        # We simulate checking a larger universe via yfinance or directly from yahoo endpoints
+        import yfinance as yf  
+        
+        for ticker in auto_universe:
             try:
                 stock = yf.Ticker(ticker)
                 info = stock.info
                 
-                # 1. Price & Market Cap
+                # Financials
                 price = info.get('currentPrice', info.get('previousClose', 0))
-                mcap = info.get('marketCap', 0)
-                mcap_cr = mcap / 10000000 if mcap > 0 else 0
-                
-                if mcap_cr == 0:
-                    mcap_type = "Data Missing"
-                elif mcap_cr < 5000:
-                    mcap_type = "🟢 Small Cap"
-                elif mcap_cr < 20000:
-                    mcap_type = "🟡 Mid Cap"
-                else:
-                    mcap_type = "🔵 Large Cap"
-                
-                # 2. Key Financial Ratios
+                mcap = info.get('marketCap', 0) / 10000000 if info.get('marketCap', 0) > 0 else 0
                 roe = info.get('returnOnEquity', 0) * 100
                 debt_to_equity = info.get('debtToEquity', 0)
-                if debt_to_equity > 10:  
-                    debt_to_equity = debt_to_equity / 100
+                if debt_to_equity > 10: debt_to_equity = debt_to_equity / 100
                 revenue_growth = info.get('revenueGrowth', 0) * 100
                 
-                # 3. News Sentiment Analysis (Using Live Headlines)
+                # Volume Action (Checking if big hands are buying)
+                avg_volume = info.get('averageVolume', 1)
+                current_volume = info.get('volume', 1)
+                volume_shock = current_volume / avg_volume if avg_volume > 0 else 1
+                
+                # News Velocity & Trigger Prediction
                 news = stock.news
-                positive_keywords = ['order', 'profit', 'expansion', 'win', 'growth', 'deal', 'hike', 'buy', 'capex', 'multibagger']
-                negative_keywords = ['loss', 'fall', 'drop', 'penalty', 'scam', 'fraud', 'investigation', 'decline', 'sell']
+                news_velocity = len(news) if news else 0
                 
+                catalyst = "No Major Catalyst"
                 sentiment_score = 0
-                news_count = 0
+                
+                positive_triggers = {
+                    'order': 'Huge Order Win 💰',
+                    'expansion': 'Capacity Expansion 🏭',
+                    'capex': 'Capex Boost 📈',
+                    'profit': 'Surging Profits 🚀',
+                    'acquisition': 'Strategic Acquisition 🤝'
+                }
+                
                 if news:
-                    for item in news[:5]: # Scanning last 5 headlines
+                    for item in news[:5]:
                         title = item.get('title', '').lower()
-                        news_count += 1
-                        for word in positive_keywords:
-                            if word in title: sentiment_score += 1
-                        for word in negative_keywords:
-                            if word in title: sentiment_score -= 1
+                        for key, msg in positive_triggers.items():
+                            if key in title:
+                                catalyst = msg
+                                sentiment_score += 2
                 
-                if news_count == 0:
-                    sentiment = "Neutral 😐"
-                elif sentiment_score > 0:
-                    sentiment = "Positive 🔥"
-                elif sentiment_score < 0:
-                    sentiment = "Negative ⚠️"
-                else:
-                    sentiment = "Neutral 😐"
+                # AI Advanced Scoring Engine
+                # Price Momentum + Volume Breakout + Financials + News Catalyst
+                score = 0
+                if roe > 12: score += 2
+                if debt_to_equity < 1.0: score += 2
+                if revenue_growth > 15: score += 2
+                if volume_shock > 1.5: score += 2  # Volume is 1.5x of average
+                if sentiment_score > 0: score += 3
                 
-                # 4. Multi-Criteria Smart Verdict
-                if roe > 15 and debt_to_equity < 1.0 and revenue_growth > 15 and sentiment == "Positive 🔥":
-                    status = "🚀 Potential Multibagger"
-                elif (roe > 10 or revenue_growth > 10) and debt_to_equity < 1.5 and sentiment != "Negative ⚠️":
-                    status = "⏳ Keep in Watchlist"
+                # Smart Action Verdict
+                if score >= 9:
+                    verdict = "🔥 STRONG BUY (Institutional Entry Detected)"
+                elif score >= 6:
+                    verdict = "⏳ ACCUMULATE (Good for Watchlist)"
                 elif debt_to_equity > 1.5:
-                    status = "❌ Avoid (High Debt)"
+                    verdict = "❌ AVOID (Debt Trap Risk)"
                 else:
-                    status = "👀 Wait for Correction"
+                    verdict = "👀 HOLD / WAIT (Weak Momentum)"
                 
                 multibagger_picks.append({
                     "Stock": ticker,
-                    "Price (₹)": price,
-                    "Market Cap (Cr)": round(mcap_cr, 2),
-                    "Category": mcap_type,
+                    "Live Price (₹)": price,
+                    "Market Cap (Cr)": round(mcap, 2),
                     "ROE (%)": round(roe, 2),
                     "Debt/Equity": round(debt_to_equity, 2),
-                    "Growth (%)": round(revenue_growth, 2),
-                    "News Sentiment": sentiment,
-                    "AI Verdict": status
+                    "Volume Spike": f"{round(volume_shock, 1)}x",
+                    "Detected Catalyst": catalyst,
+                    "AI Action Verdict": verdict
                 })
             except:
                 pass
                 
     if multibagger_picks:
         df = pd.DataFrame(multibagger_picks)
+        
+        # Presenting results in custom styled blocks
+        st.subheader("📊 Top AI Recommendations (Sorted by Best Opportunities)")
+        
+        # Sort so Strong Buys come on top
+        df['sort_order'] = df['AI Action Verdict'].apply(lambda x: 0 if 'STRONG BUY' in x else (1 if 'ACCUMULATE' in x else 2))
+        df = df.sort_values('sort_order').drop(columns=['sort_order'])
+        
         st.dataframe(df, use_container_width=True)
         
         # Download Option
         csv = df.to_csv(index=False).encode('utf-8')
-        st.download_button("Download Report as CSV 📥", data=csv, file_name="AI_Multibagger_Report.csv", mime="text/csv")
+        st.download_button("Download Live Strategy Sheet 📥", data=csv, file_name="AI_Live_Signals.csv", mime="text/csv")
+        
